@@ -160,6 +160,9 @@ function buildHtml({ status, author, originalUrl, embedUrl }) {
 
 
 app.get("/", (req, res) => {
+  if (config.rootRedirectUrl) {
+    return res.redirect(config.rootRedirectUrl);
+  }
   res.json({
     status: "ok",
     service: `${config.siteDescription} embed service :3c`,
