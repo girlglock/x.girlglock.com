@@ -40,14 +40,6 @@ function buildDescription(status) {
   const parts = [];
   if (status.text) parts.push(status.text);
 
-  const stats = [];
-  if (status.likes) stats.push(`❤️ ${formatNumber(status.likes)}`);
-  const reposts = status.reposts ?? status.retweets;
-  if (reposts) stats.push(`🔁 ${formatNumber(reposts)}`);
-  if (status.replies) stats.push(`💬 ${formatNumber(status.replies)}`);
-  if (status.views) stats.push(`👁 ${formatNumber(status.views)}`);
-  if (stats.length) parts.push(stats.join("  "));
-
   if (status.quote) {
     const q = status.quote;
     const qHandle = q.author?.screen_name ? `@${q.author.screen_name}` : "quoted tweet";
@@ -91,6 +83,20 @@ function getMediaItems(status) {
   return items;
 }
 
+function buildSiteName(status) {
+  const stats = [];
+  if (status.likes) stats.push(`❤️ ${formatNumber(status.likes)}`);
+  const reposts = status.reposts ?? status.retweets;
+  if (reposts) stats.push(`🔁 ${formatNumber(reposts)}`);
+  if (status.replies) stats.push(`💬 ${formatNumber(status.replies)}`);
+  if (status.views) stats.push(`👁 ${formatNumber(status.views)}`);
+
+  const parts = [];
+  if (stats.length) parts.push(stats.join("  "));
+  if (status.created_timestamp) parts.push(formatDate(status.created_timestamp));
+  return parts.join(" · ");
+}
+
 function buildHtml({ status, author, originalUrl, embedUrl }) {
   const verified = author.verification?.verified || author.verified;
   const title = verified
@@ -99,6 +105,8 @@ function buildHtml({ status, author, originalUrl, embedUrl }) {
 
   const description = escapeHtml(buildDescription(status));
   const avatar = escapeHtml(author.avatar_url ?? "");
+  const siteName = escapeHtml(buildSiteName(status));
+
   const quotedItems = status.quote ? getMediaItems(status.quote) : [];
   const items = quotedItems.length > 0 ? quotedItems : getMediaItems(status);
 
@@ -125,39 +133,38 @@ function buildHtml({ status, author, originalUrl, embedUrl }) {
 
   const twitterCard = items.length > 0 ? "summary_large_image" : "summary";
 
-  const primaryVideo = firstVideo ?? null;
-  const videoTags = primaryVideo
-    ? ` <meta property="og:video" content="${escapeHtml(primaryVideo.url)}" />
-        <meta property="og:video:secure_url" content="${escapeHtml(primaryVideo.url)}" />
-        <meta property="og:video:type" content="video/mp4" />
-        ${primaryVideo.width ? `<meta property="og:video:width" content="${primaryVideo.width}" />` : ""}
-        ${primaryVideo.height ? `<meta property="og:video:height" content="${primaryVideo.height}" />` : ""}
-        <meta name="twitter:player:stream" content="${escapeHtml(primaryVideo.url)}" />
-        <meta name="twitter:player:stream:content_type" content="video/mp4" />`
-          : "";
+  const videoTags = firstVideo
+    ? `<meta property="og:video" content="${escapeHtml(firstVideo.url)}" />
+  <meta property="og:video:secure_url" content="${escapeHtml(firstVideo.url)}" />
+  <meta property="og:video:type" content="video/mp4" />
+  ${firstVideo.width ? `<meta property="og:video:width" content="${firstVideo.width}" />` : ""}
+  ${firstVideo.height ? `<meta property="og:video:height" content="${firstVideo.height}" />` : ""}
+  <meta name="twitter:player:stream" content="${escapeHtml(firstVideo.url)}" />
+  <meta name="twitter:player:stream:content_type" content="video/mp4" />`
+    : "";
 
-        return `<!DOCTYPE html>
-      <html lang="en">
-      <head>
-        <meta charset="utf-8" />
-        <meta property="og:type" content="article" />
-        <meta property="og:url" content="${escapeHtml(embedUrl)}" />
-        <meta property="og:title" content="${title}" />
-        <meta property="og:description" content="${description}" />
-        ${ogImageTags}
-        ${ogImageDims}
-        ${videoTags}
-        <meta name="twitter:card" content="${twitterCard}" />
-        <meta name="twitter:title" content="${title}" />
-        <meta name="twitter:description" content="${description}" />
-        ${imageUrls[0] ? `<meta name="twitter:image" content="${escapeHtml(imageUrls[0])}" />` : ""}
-        <meta name="theme-color" content="#1D9BF0" />
-        <title>${title}</title>
-        <meta property="og:site_name" content="${status.created_timestamp ? formatDate(status.created_timestamp) + ` - ` : ``}${config.siteDescription}" />
-        <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
-      </head>
-      <body></body>
-      </html>`;
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="${escapeHtml(embedUrl)}" />
+  <meta property="og:title" content="${title}" />
+  <meta property="og:description" content="${description}" />
+  <meta property="og:site_name" content="${siteName}" />
+  ${ogImageTags}
+  ${ogImageDims}
+  ${videoTags}
+  <meta name="twitter:card" content="${twitterCard}" />
+  <meta name="twitter:title" content="${title}" />
+  <meta name="twitter:description" content="${description}" />
+  ${imageUrls[0] ? `<meta name="twitter:image" content="${escapeHtml(imageUrls[0])}" />` : ""}
+  <meta name="theme-color" content="#1D9BF0" />
+  <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
+  <title>${title}</title>
+</head>
+<body></body>
+</html>`;
 }
 
 
