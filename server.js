@@ -153,7 +153,7 @@ function buildHtml({ status, author, originalUrl, embedUrl }) {
         ${imageUrls[0] ? `<meta name="twitter:image" content="${escapeHtml(imageUrls[0])}" />` : ""}
         <meta name="theme-color" content="#1D9BF0" />
         <title>${title}</title>
-        <meta property="og:site_name" content="${status.created_timestamp ? footerParts.push(formatDate(status.created_timestamp)) + ` - ` : ``}${config.siteDescription}" />
+        <meta property="og:site_name" content="${status.created_timestamp ? formatDate(status.created_timestamp) + ` - ` : ``}${config.siteDescription}" />
         <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
       </head>
       <body></body>
