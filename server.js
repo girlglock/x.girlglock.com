@@ -55,9 +55,9 @@ function buildDescription(status) {
     parts.push(`↩️ ${qLine}`);
   }
 
-  const footerParts = [config.siteDescription];
+  /* const footerParts = [config.siteDescription];
   if (status.created_timestamp) footerParts.push(formatDate(status.created_timestamp));
-  parts.push(footerParts.join(" • "));
+  parts.push(footerParts.join(" • ")); */
 
   return parts.join("\n\n");
 }
@@ -127,35 +127,42 @@ function buildHtml({ status, author, originalUrl, embedUrl }) {
 
   const primaryVideo = firstVideo ?? null;
   const videoTags = primaryVideo
-    ? `<meta property="og:video" content="${escapeHtml(primaryVideo.url)}" />
-  <meta property="og:video:secure_url" content="${escapeHtml(primaryVideo.url)}" />
-  <meta property="og:video:type" content="video/mp4" />
-  ${primaryVideo.width ? `<meta property="og:video:width" content="${primaryVideo.width}" />` : ""}
-  ${primaryVideo.height ? `<meta property="og:video:height" content="${primaryVideo.height}" />` : ""}
-  <meta name="twitter:player:stream" content="${escapeHtml(primaryVideo.url)}" />
-  <meta name="twitter:player:stream:content_type" content="video/mp4" />`
-    : "";
+    ? ` <meta property="og:video" content="${escapeHtml(primaryVideo.url)}" />
+        <meta property="og:video:secure_url" content="${escapeHtml(primaryVideo.url)}" />
+        <meta property="og:video:type" content="video/mp4" />
+        ${primaryVideo.width ? `<meta property="og:video:width" content="${primaryVideo.width}" />` : ""}
+        ${primaryVideo.height ? `<meta property="og:video:height" content="${primaryVideo.height}" />` : ""}
+        <meta name="twitter:player:stream" content="${escapeHtml(primaryVideo.url)}" />
+        <meta name="twitter:player:stream:content_type" content="video/mp4" />`
+          : "";
 
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta property="og:type" content="article" />
-  <meta property="og:url" content="${escapeHtml(embedUrl)}" />
-  <meta property="og:title" content="${title}" />
-  <meta property="og:description" content="${description}" />
-  ${ogImageTags}
-  ${ogImageDims}
-  ${videoTags}
-  <meta name="twitter:card" content="${twitterCard}" />
-  <meta name="twitter:title" content="${title}" />
-  <meta name="twitter:description" content="${description}" />
-  ${imageUrls[0] ? `<meta name="twitter:image" content="${escapeHtml(imageUrls[0])}" />` : ""}
-  <meta name="theme-color" content="#1D9BF0" />
-  <title>${title}</title>
-</head>
-<body></body>
-</html>`;
+        return `<!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="utf-8" />
+        <meta property="og:type" content="article" />
+        <meta property="og:url" content="${escapeHtml(embedUrl)}" />
+        <meta property="og:title" content="${title}" />
+        <meta property="og:description" content="${description}" />
+        ${ogImageTags}
+        ${ogImageDims}
+        ${videoTags}
+        <meta name="twitter:card" content="${twitterCard}" />
+        <meta name="twitter:title" content="${title}" />
+        <meta name="twitter:description" content="${description}" />
+        ${imageUrls[0] ? `<meta name="twitter:image" content="${escapeHtml(imageUrls[0])}" />` : ""}
+        <meta name="theme-color" content="#1D9BF0" />
+        <title>${title}</title>
+        <meta property="og:site_name" content="girlglock.com" />
+        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/1x.png" rel="icon" sizes="svgxsvg" type="image/svg+xml" />
+        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/4x.png" rel="icon" sizes="64x64" type="image/png" />
+        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/3x.png" rel="icon" sizes="48x48" type="image/png" />
+        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/2x.png" rel="icon" sizes="32x32" type="image/png" />
+        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/2x.png" rel="icon" sizes="24x24" type="image/png" />
+        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/1x.png" rel="icon" sizes="16x16" type="image/png" />
+      </head>
+      <body></body>
+      </html>`;
 }
 
 
