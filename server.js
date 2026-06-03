@@ -153,13 +153,8 @@ function buildHtml({ status, author, originalUrl, embedUrl }) {
         ${imageUrls[0] ? `<meta name="twitter:image" content="${escapeHtml(imageUrls[0])}" />` : ""}
         <meta name="theme-color" content="#1D9BF0" />
         <title>${title}</title>
-        <meta property="og:site_name" content="girlglock.com" />
-        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/1x.png" rel="icon" sizes="svgxsvg" type="image/svg+xml" />
-        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/4x.png" rel="icon" sizes="64x64" type="image/png" />
-        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/3x.png" rel="icon" sizes="48x48" type="image/png" />
-        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/2x.png" rel="icon" sizes="32x32" type="image/png" />
-        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/2x.png" rel="icon" sizes="24x24" type="image/png" />
-        <link href="https://cdn.7tv.app/emote/01H16FA16G0005EZED5J0EY7KN/1x.png" rel="icon" sizes="16x16" type="image/png" />
+        <meta property="og:site_name" content="${status.created_timestamp ? footerParts.push(formatDate(status.created_timestamp)) + ` - ` : ``}girlglock.com" />
+        <link rel="icon" type="image/x-icon" href="/images/favicon.ico">
       </head>
       <body></body>
       </html>`;
