@@ -240,6 +240,11 @@ app.get("/:username/status/:id.gif", async (req, res) => {
   }
 });
 
+app.get("/:username/status/:id/:mediaType(video|image)/:num", (req, res) => {
+  const { username, id } = req.params;
+  res.redirect(`https://${req.get("Host")}/${username}/status/${id}`);
+});
+
 app.get("/:username/status/:id", async (req, res) => {
   const { username, id: statusId } = req.params;
   const originalUrl = `https://x.com/${username}/status/${statusId}`;
