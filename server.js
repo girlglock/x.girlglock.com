@@ -107,8 +107,8 @@ function buildHtml({ status, author, originalUrl, embedUrl }) {
   const avatar = escapeHtml(author.avatar_url ?? "");
   const siteName = escapeHtml(buildSiteName(status));
 
-  const quotedItems = status.quote ? getMediaItems(status.quote) : [];
-  const items = quotedItems.length > 0 ? quotedItems : getMediaItems(status);
+  const ownItems = getMediaItems(status);
+  const items = ownItems.length > 0 ? ownItems : (status.quote ? getMediaItems(status.quote) : []);
 
   const firstVideo = items.find(i => i.type === "video") ?? null;
   const firstGif = items.find(i => i.type === "gif") ?? null;
