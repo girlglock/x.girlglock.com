@@ -240,7 +240,7 @@ app.get("/:username/status/:id.gif", async (req, res) => {
   }
 });
 
-app.get("/:username/status/:id/:mediaType(video|image)/:num", (req, res) => {
+app.get("/:username/status/:id/:mediaType(video|photo)/:num", (req, res) => {
   const { username, id } = req.params;
   res.redirect(`https://${req.get("Host")}/${username}/status/${id}`);
 });
