@@ -167,6 +167,25 @@ function buildHtml({ status, author, originalUrl, embedUrl }) {
 </html>`;
 }
 
+async function fetchTweet(username, statusId) {
+  const res = await fetch(`${config.fxApiBase}/${username}/status/${statusId}`, {
+    headers: { "User-Agent": `${config.siteDescription}/1.0 (embed proxy)` },
+  });
+  return res.json();
+}
+
+function withTweet(handler) {
+  return async (req, res) => {
+    const { username, id: statusId } = req.params;
+    if (!/^\d+$/.test(statusId)) return res.status(400).json({ error: "invalid status id" });
+    try {
+      const data = await fetchTweet(username, statusId);
+      return handler(req, res, data);
+    } catch {
+      return res.status(502).json({ error: "fxtwitter api error" });
+    }
+  };
+}
 
 app.get("/", (req, res) => {
   if (config.rootRedirectUrl) {
@@ -179,66 +198,36 @@ app.get("/", (req, res) => {
   });
 });
 
+const servePhoto = withTweet((req, res, data) => {
+  const photo = data.tweet?.media?.photos?.[0] ?? data.tweet?.media?.mosaic;
+  if (!photo?.url) return res.status(404).json({ error: "no photo" });
+  return res.redirect(photo.url);
+});
+
 app.get("/:username/status/:id/photo", servePhoto);
-
-
-async function servePhoto(req, res) {
-  const { username, id: statusId } = req.params;
-  if (!/^\d+$/.test(statusId)) return res.status(400).json({ error: "invalid status id" });
-
-  try {
-    const apiRes = await fetch(`${config.fxApiBase}/${username}/status/${statusId}`, {
-      headers: { "User-Agent": `${config.siteDescription}/1.0 (embed proxy)` },
-    });
-    const data = await apiRes.json();
-    const photo = data.tweet?.media?.photos?.[0] ?? data.tweet?.media?.mosaic;
-    if (!photo?.url) return res.status(404).json({ error: "no photo" });
-    return res.redirect(photo.url);
-  } catch {
-    return res.status(502).json({ error: "fxtwitter api error" });
-  }
-}
-
 for (const ext of ["png", "jpg", "jpeg"]) {
   app.get(`/:username/status/:id.${ext}`, servePhoto);
 }
 
-app.get("/:username/status/:id.mp4", async (req, res) => {
-  const { username, id: statusId } = req.params;
-  if (!/^\d+$/.test(statusId)) return res.status(400).json({ error: "invalid status id" });
+app.get("/:username/status/:id.mp4", withTweet((req, res, data) => {
+  const vid = data.tweet?.media?.videos?.find(v => v.type !== "gif");
+  if (!vid?.url) return res.status(404).json({ error: "no video" });
+  return res.redirect(vid.url);
+}));
 
-  try {
-    const apiRes = await fetch(`${config.fxApiBase}/${username}/status/${statusId}`, {
-      headers: { "User-Agent": `${config.siteDescription}/1.0 (embed proxy)` },
-    });
-    const data = await apiRes.json();
-    const vid = data.tweet?.media?.videos?.find(v => v.type !== "gif");
-    if (!vid?.url) return res.status(404).json({ error: "no video" });
-    return res.redirect(vid.url);
-  } catch {
-    return res.status(502).json({ error: "failed to fetch video" });
-  }
-});
+app.get("/:username/status/:id.gif", withTweet((req, res, data) => {
+  const gif = data.tweet?.media?.videos?.find(v => v.type === "gif");
+  if (!gif?.url) return res.status(404).json({ error: "no gif" });
+  return res.redirect(gifWebpUrl(gif.url));
+}));
 
-app.get("/:username/status/:id.gif", async (req, res) => {
-  const { username, id: statusId } = req.params;
-
-  if (!/^\d+$/.test(statusId)) {
-    return res.status(400).json({ error: "invalid status id" });
-  }
-
-  try {
-    const apiRes = await fetch(`${config.fxApiBase}/${username}/status/${statusId}`, {
-      headers: { "User-Agent": `${config.siteDescription}/1.0 (embed proxy)` },
-    });
-    const data = await apiRes.json();
-    const gif = data.tweet?.media?.videos?.find(v => v.type === "gif");
-    if (!gif?.url) return res.status(404).json({ error: "no gif" });
-    return res.redirect(gifWebpUrl(gif.url));
-  } catch {
-    return res.status(502).json({ error: "fxtwitter api error" });
-  }
-});
+app.get("/:username/status/:id/video/:num.mp4", withTweet((req, res, data) => {
+  const idx = (parseInt(req.params.num, 10) || 1) - 1;
+  const videos = (data.tweet?.media?.videos ?? []).filter(v => v.type !== "gif");
+  const vid = videos[idx] ?? videos[0];
+  if (!vid?.url) return res.status(404).json({ error: "no video" });
+  return res.redirect(vid.url);
+}));
 
 app.get("/:username/status/:id/:mediaType(video|photo)/:num", (req, res) => {
   const { username, id } = req.params;
