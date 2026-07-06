@@ -10,6 +10,15 @@ app.use((req, res, next) => {
   res.status(403).json({ error: "access denied" });
 });
 
+//strip params and lcase the fileextension
+app.use((req, res, next) => {
+  const match = req.originalUrl.match(/^(\/[^/?]+\/status\/\d+)(?:\?[^#]*)?\.(gif|png|jpe?g|mp4)$/i);
+  if (match) {
+    req.url = `${match[1]}.${match[2].toLowerCase()}`;
+  }
+  next();
+});
+
 function isBot(userAgent) {
   return userAgent && ['Discordbot', 'Twitterbot', 'facebookexternalhit', 'LinkedInBot'].some(a => userAgent.includes(a));
 }
@@ -187,6 +196,86 @@ function withTweet(handler) {
   };
 }
 
+async function translateText(text, targetLang = "en") {
+  if (!text) return text;
+  try {
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(url);
+    if (!res.ok) return text;
+    const data = await res.json();
+    return (data?.[0] ?? []).map(chunk => chunk[0]).join("");
+  } catch {
+    return text;
+  }
+}
+
+function unavailableHtml(embedUrl) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="${escapeHtml(embedUrl)}" />
+  <meta property="og:title" content="Tweet unavailable" />
+  <meta property="og:description" content="" />
+  <meta name="twitter:card" content="summary" />
+</head>
+<body></body>
+</html>`;
+}
+
+async function renderEmbed({ req, res, username, statusId, translate = false, data }) {
+  const originalUrl = `https://x.com/${username}/status/${statusId}`;
+  const embedUrl = `https://${req.get("Host")}/${username}/status/${statusId}${translate ? "/translate" : ""}`;
+
+  const ua = req.get("User-Agent") ?? "";
+  console.log(`[embed] ${username}/${statusId} ua="${ua}" translate=${translate}`);
+
+  if (!isBot(ua)) {
+    console.log(`[embed] not a bot, redirecting`);
+    return res.redirect(originalUrl);
+  }
+
+  if (!data) {
+    try {
+      const apiUrl = `${config.fxApiBase}/${username}/status/${statusId}`;
+      console.log(`[embed] fetching ${apiUrl}`);
+      const apiRes = await fetch(apiUrl, {
+        headers: { "User-Agent": `${config.siteDescription}/1.0 (embed proxy)` },
+      });
+      console.log(`[embed] api http status=${apiRes.status}`);
+      data = await apiRes.json();
+    } catch (err) {
+      console.error(`[embed] api fetch error:`, err.message);
+      return res.status(502).send("Failed to reach FxTwitter API");
+    }
+  }
+
+  if (!data?.tweet?.id) {
+    console.log(`[embed] no tweet data, serving unavailable embed`);
+    return res
+      .set("Content-Type", "text/html; charset=utf-8")
+      .send(unavailableHtml(embedUrl));
+  }
+
+  const status = data.tweet;
+  const author = data.tweet.author;
+
+  if (translate) {
+    status.text = await translateText(status.text);
+    if (status.quote?.text) status.quote.text = await translateText(status.quote.text);
+  }
+
+  const html = buildHtml({ status, author, originalUrl, embedUrl });
+
+  return res
+    .set("Content-Type", "text/html; charset=utf-8")
+    .set("Cache-Control", "public, max-age=300, stale-while-revalidate=60")
+    .set("X-Robots-Tag", "noindex")
+    .set("X-Content-Type-Options", "nosniff")
+    .send(html);
+}
+
 app.get("/", (req, res) => {
   if (config.rootRedirectUrl) {
     return res.redirect(config.rootRedirectUrl);
@@ -200,7 +289,10 @@ app.get("/", (req, res) => {
 
 const servePhoto = withTweet((req, res, data) => {
   const photo = data.tweet?.media?.photos?.[0] ?? data.tweet?.media?.mosaic;
-  if (!photo?.url) return res.status(404).json({ error: "no photo" });
+  if (!photo?.url) {
+    const { username, id: statusId } = req.params;
+    return renderEmbed({ req, res, username, statusId, data });
+  }
   return res.redirect(photo.url);
 });
 
@@ -211,13 +303,19 @@ for (const ext of ["png", "jpg", "jpeg"]) {
 
 app.get("/:username/status/:id.mp4", withTweet((req, res, data) => {
   const vid = data.tweet?.media?.videos?.find(v => v.type !== "gif");
-  if (!vid?.url) return res.status(404).json({ error: "no video" });
+  if (!vid?.url) {
+    const { username, id: statusId } = req.params;
+    return renderEmbed({ req, res, username, statusId, data });
+  }
   return res.redirect(vid.url);
 }));
 
 app.get("/:username/status/:id.gif", withTweet((req, res, data) => {
   const gif = data.tweet?.media?.videos?.find(v => v.type === "gif");
-  if (!gif?.url) return res.status(404).json({ error: "no gif" });
+  if (!gif?.url) {
+    const { username, id: statusId } = req.params;
+    return renderEmbed({ req, res, username, statusId, data });
+  }
   return res.redirect(gifWebpUrl(gif.url));
 }));
 
@@ -234,64 +332,14 @@ app.get("/:username/status/:id/:mediaType(video|photo)/:num", (req, res) => {
   res.redirect(`https://${req.get("Host")}/${username}/status/${id}`);
 });
 
-app.get("/:username/status/:id", async (req, res) => {
+app.get("/:username/status/:id/translate", (req, res) => {
   const { username, id: statusId } = req.params;
-  const originalUrl = `https://x.com/${username}/status/${statusId}`;
+  return renderEmbed({ req, res, username, statusId, translate: true });
+});
 
-  const ua = req.get("User-Agent") ?? "";
-  console.log(`[embed] ${username}/${statusId} ua="${ua}"`);
-
-  if (!isBot(ua)) {
-    console.log(`[embed] not a bot, redirecting`);
-    return res.redirect(originalUrl);
-  }
-
-  let data;
-  try {
-    const apiUrl = `${config.fxApiBase}/${username}/status/${statusId}`;
-    console.log(`[embed] fetching ${apiUrl}`);
-    const apiRes = await fetch(apiUrl, {
-      headers: { "User-Agent": `${config.siteDescription}/1.0 (embed proxy)` },
-    });
-    console.log(`[embed] api http status=${apiRes.status}`);
-    data = await apiRes.json();
-    console.log(`[embed] api code=${data?.code} keys=${Object.keys(data ?? {}).join(",")} raw=${JSON.stringify(data).slice(0, 800)}`);
-  } catch (err) {
-    console.error(`[embed] api fetch error:`, err.message);
-    return res.status(502).send("Failed to reach FxTwitter API");
-  }
-
-  const embedUrl = `https://${req.get("Host")}/${username}/status/${statusId}`;
-
-  if (!data?.tweet?.id) {
-    console.log(`[embed] no tweet data, serving unavailable embed`);
-    return res
-      .set("Content-Type", "text/html; charset=utf-8")
-      .send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta property="og:type" content="article" />
-  <meta property="og:url" content="${escapeHtml(embedUrl)}" />
-  <meta property="og:title" content="Tweet unavailable" />
-  <meta property="og:description" content="" />
-  <meta name="twitter:card" content="summary" />
-</head>
-<body></body>
-</html>`);
-  }
-
-  const status = data.tweet;
-  const author = data.tweet.author;
-
-  const html = buildHtml({ status, author, originalUrl, embedUrl });
-
-  res
-    .set("Content-Type", "text/html; charset=utf-8")
-    .set("Cache-Control", "public, max-age=300, stale-while-revalidate=60")
-    .set("X-Robots-Tag", "noindex")
-    .set("X-Content-Type-Options", "nosniff")
-    .send(html);
+app.get("/:username/status/:id", (req, res) => {
+  const { username, id: statusId } = req.params;
+  return renderEmbed({ req, res, username, statusId });
 });
 
 app.use((req, res) => {
