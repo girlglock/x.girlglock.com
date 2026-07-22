@@ -311,12 +311,14 @@ app.get("/:username/status/:id.mp4", withTweet((req, res, data) => {
 }));
 
 app.get("/:username/status/:id.gif", withTweet((req, res, data) => {
-  const gif = data.tweet?.media?.videos?.find(v => v.type === "gif");
-  if (!gif?.url) {
-    const { username, id: statusId } = req.params;
-    return renderEmbed({ req, res, username, statusId, data });
-  }
-  return res.redirect(gifWebpUrl(gif.url));
+  const videos = data.tweet?.media?.videos ?? [];
+  const media = videos.find(v => v.type === "gif" && v.url)
+    ?? videos.find(v => v.type !== "gif" && v.url && (v.duration == null || v.duration <= 10));
+
+  if (media) return res.redirect(gifWebpUrl(media.url));
+
+  const { username, id: statusId } = req.params;
+  return renderEmbed({ req, res, username, statusId, data });
 }));
 
 app.get("/:username/status/:id/video/:num.mp4", withTweet((req, res, data) => {
