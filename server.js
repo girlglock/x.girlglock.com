@@ -313,7 +313,7 @@ app.get("/:username/status/:id.mp4", withTweet((req, res, data) => {
 app.get("/:username/status/:id.gif", withTweet((req, res, data) => {
   const videos = data.tweet?.media?.videos ?? [];
   const media = videos.find(v => v.type === "gif" && v.url)
-    ?? videos.find(v => v.type !== "gif" && v.url && (v.duration == null || v.duration <= 10));
+    ?? videos.find(v => v.type !== "gif" && v.url && (v.duration == null || v.duration <= 20));
 
   if (media) return res.redirect(gifWebpUrl(media.url));
 
