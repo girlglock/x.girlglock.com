@@ -1,8 +1,5 @@
 {
   "functions": {
     "server.js": { "maxDuration": 60 }
-  },
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/server.js" }
-  ]
+  }
 }

@@ -106,7 +106,7 @@ function buildSiteName(status) {
   return parts.join(" · ");
 }
 
-function buildHtml({ status, author, originalUrl, embedUrl }) {
+function buildHtml({ status, author, originalUrl, embedUrl, statusUrl }) {
   const verified = author.verification?.verified || author.verified;
   const title = verified
     ? `${escapeHtml(author.name)} ✓ (@${escapeHtml(author.screen_name)})`
@@ -125,7 +125,7 @@ function buildHtml({ status, author, originalUrl, embedUrl }) {
 
   const imageUrls = [];
   if (firstGif) {
-    imageUrls.push(`${embedUrl}.gif`);
+    imageUrls.push(`${statusUrl}.gif`);
   } else if (firstVideo?.thumbnail) {
     imageUrls.push(firstVideo.thumbnail);
   } else {
@@ -245,7 +245,8 @@ function unavailableHtml(embedUrl) {
 
 async function renderEmbed({ req, res, username, statusId, translate = false, data }) {
   const originalUrl = `https://x.com/${username}/status/${statusId}`;
-  const embedUrl = `https://${req.get("Host")}/${username}/status/${statusId}${translate ? "/translate" : ""}`;
+  const statusUrl = `https://${req.get("Host")}/${username}/status/${statusId}`;
+  const embedUrl = `${statusUrl}${translate ? "/translate" : ""}`;
 
   const ua = req.get("User-Agent") ?? "";
   console.log(`[embed] ${username}/${statusId} ua="${ua}" translate=${translate}`);
@@ -285,7 +286,7 @@ async function renderEmbed({ req, res, username, statusId, translate = false, da
     if (status.quote?.text) status.quote.text = await translateText(status.quote.text);
   }
 
-  const html = buildHtml({ status, author, originalUrl, embedUrl });
+  const html = buildHtml({ status, author, originalUrl, embedUrl, statusUrl });
 
   return res
     .set("Content-Type", "text/html; charset=utf-8")
@@ -353,7 +354,7 @@ app.get("/:username/status/:id/:mediaType(video|photo)/:num", (req, res) => {
   res.redirect(`https://${req.get("Host")}/${username}/status/${id}`);
 });
 
-app.get("/:username/status/:id/translate", (req, res) => {
+app.get(["/:username/status/:id/translate", "/:username/status/:id/:mediaType(video|photo)/:num/translate"], (req, res) => {
   const { username, id: statusId } = req.params;
   return renderEmbed({ req, res, username, statusId, translate: true });
 });
