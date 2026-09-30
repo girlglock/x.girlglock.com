@@ -196,17 +196,36 @@ function withTweet(handler) {
   };
 }
 
+const translateEndpoints = [
+  {
+    url: (text, tl) => `https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=${tl}&q=${encodeURIComponent(text)}`,
+    parse: data => {
+      const first = data?.[0];
+      return Array.isArray(first) ? first[0] : first;
+    },
+  },
+  {
+    url: (text, tl) => `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${tl}&dt=t&q=${encodeURIComponent(text)}`,
+    parse: data => (data?.[0] ?? []).map(chunk => chunk[0]).join(""),
+  },
+];
+
 async function translateText(text, targetLang = "en") {
   if (!text) return text;
-  try {
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetLang}&dt=t&q=${encodeURIComponent(text)}`;
-    const res = await fetch(url);
-    if (!res.ok) return text;
-    const data = await res.json();
-    return (data?.[0] ?? []).map(chunk => chunk[0]).join("");
-  } catch {
-    return text;
+  for (const endpoint of translateEndpoints) {
+    try {
+      const res = await fetch(endpoint.url(text, targetLang));
+      if (!res.ok) {
+        console.error(`[translate] ${new URL(res.url).host} http status=${res.status}`);
+        continue;
+      }
+      const translated = endpoint.parse(await res.json());
+      if (typeof translated === "string" && translated) return translated;
+    } catch (err) {
+      console.error(`[translate] error:`, err.message);
+    }
   }
+  return text;
 }
 
 function unavailableHtml(embedUrl) {
