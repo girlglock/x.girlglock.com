@@ -1,12 +1,10 @@
-import express from "express";
 import config from "../config.js";
 import FxTwitterClient from "./twitter/FxTwitterClient.js";
 import Translator from "./translate/Translator.js";
 import StatusController from "./http/StatusController.js";
 import { hostAllowlist, normalizeMediaExtension } from "./http/middleware.js";
 
-export function createApp() {
-  const app = express();
+export function setupApp(app) {
   app.use(hostAllowlist(config.allowedHosts));
   app.use(normalizeMediaExtension());
 

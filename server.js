@@ -1,7 +1,8 @@
+import express from "express";
 import { pathToFileURL } from "node:url";
 import config from "./config.js";
-import { createApp } from "./src/createApp.js";
+import { setupApp } from "./src/setupApp.js";
 
-const app = createApp();
+const app = setupApp(express());
 
 export default app;
