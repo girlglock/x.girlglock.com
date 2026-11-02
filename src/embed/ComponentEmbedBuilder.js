@@ -1,5 +1,5 @@
 import Tweet from "../twitter/Tweet.js";
-import { displayWidth, escapeMarkdown, truncate, truncateToWidth, wrapText } from "../util/format.js";
+import { discordTimestamp, displayWidth, escapeMarkdown, truncate, truncateToWidth, wrapText } from "../util/format.js";
 
 const MAX_BYTES = 3000;
 const MAX_MEDIA = 10;
@@ -16,6 +16,7 @@ const MIN_WRAP_WIDTH = 20;
 const MIN_HEADER_WIDTH = 10;
 const MIN_NAME_WIDTH = 6;
 const NBSP = String.fromCharCode(160);
+const DATE_PLACEHOLDER = String.fromCharCode(1).repeat(25);
 
 export default class ComponentEmbedBuilder {
   constructor({ tweet, originalUrl }) {
@@ -97,10 +98,11 @@ export default class ComponentEmbedBuilder {
       .map(i => ({ media: { url: i.type === "gif" ? Tweet.gifUrl(i.url) : i.url } }));
     if (items.length) components.push({ type: 12, items });
 
-    const stats = tweet.statsLine;
+    const stats = tweet.statsText(() => DATE_PLACEHOLDER);
     if (stats) {
       components.push({ type: 14, divider: true, spacing: 1 });
-      const lines = this.#wrap(stats, SUBTEXT_CHAR_PX).split("\n").map(l => l.replace(/^·\s/, ""));
+      const lines = this.#wrap(stats, SUBTEXT_CHAR_PX).split("\n")
+        .map(l => l.replace(/^·\s/, "").replace(DATE_PLACEHOLDER, discordTimestamp(tweet.data.created_timestamp)));
       components.push({ type: 10, content: lines.map(l => `-# ${l}`).join("\n") });
     }
 

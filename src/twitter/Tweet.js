@@ -1,4 +1,4 @@
-import { formatDate, formatNumber } from "../util/format.js";
+import { formatDateTime, formatNumber } from "../util/format.js";
 
 export default class Tweet {
   constructor(data) {
@@ -38,6 +38,10 @@ export default class Tweet {
   }
 
   get statsLine() {
+    return this.statsText(formatDateTime);
+  }
+
+  statsText(formatTimestamp) {
     const nbsp = String.fromCharCode(160);
     const stats = [];
     if (this.data.likes) stats.push(`❤️${nbsp}${formatNumber(this.data.likes)}`);
@@ -48,7 +52,7 @@ export default class Tweet {
 
     const parts = [];
     if (stats.length) parts.push(stats.join("  "));
-    if (this.data.created_timestamp) parts.push(formatDate(this.data.created_timestamp).replace(/ /g, nbsp));
+    if (this.data.created_timestamp) parts.push(formatTimestamp(this.data.created_timestamp).replace(/ /g, nbsp));
     return parts.join(` ·${nbsp}`);
   }
 

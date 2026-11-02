@@ -22,13 +22,18 @@ export function formatNumber(n) {
   return String(n);
 }
 
-export function formatDate(timestamp) {
+export function formatDateTime(timestamp) {
   if (!timestamp) return "";
-  return new Date(timestamp * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+  const date = new Date(timestamp * 1000).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit", timeZone: "UTC" });
+  return `${date} UTC`;
 }
 
-const WIDE_CHAR = /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]|\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
-const ZERO_WIDTH = /\p{Mark}|‍/u;
+export function discordTimestamp(timestamp) {
+  return `<t:${timestamp}:f>`;
+}
+
+const WIDE_CHAR = /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFF60\uFFE0-\uFFE6]|\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
+const ZERO_WIDTH = /\p{Mark}|\u200d/u;
 
 export function displayWidth(str) {
   let width = 0;
