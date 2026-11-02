@@ -38,17 +38,18 @@ export default class Tweet {
   }
 
   get statsLine() {
+    const nbsp = " ";
     const stats = [];
-    if (this.data.likes) stats.push(`❤️ ${formatNumber(this.data.likes)}`);
+    if (this.data.likes) stats.push(`❤️${nbsp}${formatNumber(this.data.likes)}`);
     const reposts = this.data.reposts ?? this.data.retweets;
-    if (reposts) stats.push(`🔁 ${formatNumber(reposts)}`);
-    if (this.data.replies) stats.push(`💬 ${formatNumber(this.data.replies)}`);
-    if (this.data.views) stats.push(`👁 ${formatNumber(this.data.views)}`);
+    if (reposts) stats.push(`🔁${nbsp}${formatNumber(reposts)}`);
+    if (this.data.replies) stats.push(`💬${nbsp}${formatNumber(this.data.replies)}`);
+    if (this.data.views) stats.push(`👁${nbsp}${formatNumber(this.data.views)}`);
 
     const parts = [];
     if (stats.length) parts.push(stats.join("  "));
-    if (this.data.created_timestamp) parts.push(formatDate(this.data.created_timestamp));
-    return parts.join(" · ");
+    if (this.data.created_timestamp) parts.push(formatDate(this.data.created_timestamp).replace(/ /g, nbsp));
+    return parts.join(` ·${nbsp}`);
   }
 
   get description() {
@@ -60,5 +61,26 @@ export default class Tweet {
       parts.push(`↩️ ${q.text ? `${qHandle}: ${q.text}` : qHandle}`);
     }
     return parts.join("\n\n");
+  }
+
+  get communityNote() {
+    const note = this.data.community_note;
+    if (!note?.text) return null;
+
+    const chars = [...note.text];
+    const links = (note.entities ?? [])
+      .filter(e => e.ref?.url && Number.isInteger(e.fromIndex) && e.toIndex > e.fromIndex)
+      .sort((a, b) => a.fromIndex - b.fromIndex);
+
+    const segments = [];
+    let pos = 0;
+    for (const link of links) {
+      if (link.fromIndex < pos || link.toIndex > chars.length) continue;
+      if (link.fromIndex > pos) segments.push({ text: chars.slice(pos, link.fromIndex).join("") });
+      segments.push({ text: chars.slice(link.fromIndex, link.toIndex).join(""), url: link.ref.url });
+      pos = link.toIndex;
+    }
+    if (pos < chars.length) segments.push({ text: chars.slice(pos).join("") });
+    return segments;
   }
 }

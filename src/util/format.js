@@ -27,6 +27,41 @@ export function formatDate(timestamp) {
   return new Date(timestamp * 1000).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
 }
 
+const WIDE_CHAR = /[ᄀ-ᅟ⺀-꓏가-힣豈-﫿︰-﹏＀-｠￠-￦]|\p{Extended_Pictographic}|\p{Regional_Indicator}/u;
+const ZERO_WIDTH = /\p{Mark}|‍/u;
+
+export function displayWidth(str) {
+  let width = 0;
+  for (const ch of str) {
+    if (ZERO_WIDTH.test(ch)) continue;
+    width += WIDE_CHAR.test(ch) ? 2 : 1;
+  }
+  return width;
+}
+
+export function wrapText(text, maxWidth) {
+  if (!text || !maxWidth) return text;
+  return text.split("\n").map(line => {
+    const lines = [];
+    let current = "";
+    let gap = "";
+    for (const part of line.split(/( +)/)) {
+      if (!part) continue;
+      if (part.trim() === "") { gap = part; continue; }
+      const candidate = current ? current + gap + part : gap + part;
+      if (current && displayWidth(candidate) > maxWidth) {
+        lines.push(current);
+        current = part;
+      } else {
+        current = candidate;
+      }
+      gap = "";
+    }
+    lines.push(current);
+    return lines.join("\n");
+  }).join("\n");
+}
+
 export function truncate(str, max) {
   if (!str || str.length <= max) return str;
   return max <= 1 ? "" : `${str.slice(0, max - 1).trimEnd()}…`;
