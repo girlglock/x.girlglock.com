@@ -39,6 +39,18 @@ export function displayWidth(str) {
   return width;
 }
 
+const graphemes = new Intl.Segmenter(undefined, { granularity: "grapheme" });
+
+export function truncateToWidth(str, maxWidth) {
+  if (displayWidth(str) <= maxWidth) return str;
+  let out = "";
+  for (const { segment } of graphemes.segment(str)) {
+    if (displayWidth(out + segment) + 1 > maxWidth) break;
+    out += segment;
+  }
+  return `${out.trimEnd()}…`;
+}
+
 export function wrapText(text, maxWidth) {
   if (!text || !maxWidth) return text;
   return text.split("\n").map(line => {

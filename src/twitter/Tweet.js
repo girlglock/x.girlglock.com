@@ -38,7 +38,7 @@ export default class Tweet {
   }
 
   get statsLine() {
-    const nbsp = " ";
+    const nbsp = String.fromCharCode(160);
     const stats = [];
     if (this.data.likes) stats.push(`❤️${nbsp}${formatNumber(this.data.likes)}`);
     const reposts = this.data.reposts ?? this.data.retweets;

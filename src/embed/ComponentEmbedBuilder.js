@@ -1,5 +1,5 @@
 import Tweet from "../twitter/Tweet.js";
-import { escapeMarkdown, truncate, wrapText } from "../util/format.js";
+import { displayWidth, escapeMarkdown, truncate, truncateToWidth, wrapText } from "../util/format.js";
 
 const MAX_BYTES = 3000;
 const MAX_MEDIA = 10;
@@ -9,8 +9,13 @@ const MEDIA_MAX_HEIGHT_PX = 350;
 const CONTENT_MAX_WIDTH_PX = 480;
 const TEXT_CHAR_PX = 7.5;
 const SUBTEXT_CHAR_PX = 6;
+const HEADING_CHAR_PX = 8.5;
 const QUOTE_INDENT_PX = 16;
+const BUTTON_PX = 92;
 const MIN_WRAP_WIDTH = 20;
+const MIN_HEADER_WIDTH = 10;
+const MIN_NAME_WIDTH = 6;
+const NBSP = String.fromCharCode(160);
 
 export default class ComponentEmbedBuilder {
   constructor({ tweet, originalUrl }) {
@@ -49,19 +54,33 @@ export default class ComponentEmbedBuilder {
     return wrapText(text, Math.max(MIN_WRAP_WIDTH, Math.floor((this.mediaWidth - indentPx) / charPx)));
   }
 
+  #header() {
+    const { tweet } = this;
+    const author = tweet.author;
+    const mark = tweet.verified ? `${NBSP}✓` : "";
+    const handle = `[@${escapeMarkdown(author.screen_name)}](https://x.com/${author.screen_name})`;
+    const line = name => `### ${escapeMarkdown(name).replace(/[[\]]/g, "\\$&")}${mark}`;
+
+    if (!this.mediaWidth) return `${line(author.name)} ${handle}`;
+
+    const budget = Math.max(MIN_HEADER_WIDTH, Math.floor((this.mediaWidth - BUTTON_PX) / HEADING_CHAR_PX));
+    const roomBesideHandle = budget - displayWidth(`@${author.screen_name}${mark}`) - 1;
+    if (displayWidth(author.name) <= roomBesideHandle) return `${line(author.name)} ${handle}`;
+    if (roomBesideHandle >= MIN_NAME_WIDTH) {
+      return `${line(truncateToWidth(author.name, roomBesideHandle))} ${handle}`;
+    }
+    return `${line(truncateToWidth(author.name, budget - displayWidth(mark)))}\n### ${handle}`;
+  }
+
   #quoteBlock(text) {
     return `> ${text}`.replace(/\n/g, "\n> ");
   }
 
   #components(text, quoteText) {
     const { tweet } = this;
-    const author = tweet.author;
-    const profileUrl = `https://x.com/${author.screen_name}`;
-    const name = escapeMarkdown(author.name).replace(/[[\]]/g, "\\$&");
-
     const components = [{
       type: 9,
-      components: [{ type: 10, content: `### ${name}${tweet.verified ? " ✓" : ""}\n-# [@${escapeMarkdown(author.screen_name)}](${profileUrl})` }],
+      components: [{ type: 10, content: this.#header() }],
       accessory: { type: 2, style: 5, label: "Open", url: this.originalUrl },
     }];
     if (text) components.push({ type: 10, content: escapeMarkdown(this.#wrap(text, TEXT_CHAR_PX)) });
@@ -81,7 +100,8 @@ export default class ComponentEmbedBuilder {
     const stats = tweet.statsLine;
     if (stats) {
       components.push({ type: 14, divider: true, spacing: 1 });
-      components.push({ type: 10, content: this.#wrap(stats, SUBTEXT_CHAR_PX).split("\n").map(l => `-# ${l}`).join("\n") });
+      const lines = this.#wrap(stats, SUBTEXT_CHAR_PX).split("\n").map(l => l.replace(/^·\s/, ""));
+      components.push({ type: 10, content: lines.map(l => `-# ${l}`).join("\n") });
     }
 
     const note = tweet.communityNote;
