@@ -52,7 +52,7 @@ export default class StatusController {
   serveVideo(req, res, data) {
     const vid = data.tweet?.media?.videos?.find(v => v.type !== "gif");
     if (!vid?.url) return this.renderEmbed(req, res, { data });
-    return res.redirect(vid.url);
+    return res.redirect(Tweet.videoUrl(vid.url));
   }
 
   serveGif(req, res, data) {
@@ -68,7 +68,7 @@ export default class StatusController {
     const videos = (data.tweet?.media?.videos ?? []).filter(v => v.type !== "gif");
     const vid = videos[idx] ?? videos[0];
     if (!vid?.url) return res.status(404).json({ error: "no video" });
-    return res.redirect(vid.url);
+    return res.redirect(Tweet.videoUrl(vid.url));
   }
 
   redirectToStatus(req, res) {

@@ -5,6 +5,10 @@ export default class Tweet {
     this.data = data;
   }
 
+  static videoUrl(url) {
+    return url?.replace(/\?.*$/, "");
+  }
+
   static gifUrl(mp4Url) {
     return mp4Url.replace("https://video.twimg.com", "https://gif.fxtwitter.com").replace(/\.mp4(\?.*)?$/, ".gif");
   }
@@ -21,7 +25,7 @@ export default class Tweet {
   get mediaItems() {
     const items = [];
     for (const vid of this.videos) {
-      items.push({ type: vid.type === "gif" ? "gif" : "video", url: vid.url, thumbnail: vid.thumbnail_url, width: vid.width, height: vid.height });
+      items.push({ type: vid.type === "gif" ? "gif" : "video", url: Tweet.videoUrl(vid.url), thumbnail: vid.thumbnail_url, width: vid.width, height: vid.height });
     }
     for (const p of this.photos) {
       items.push({ type: "photo", url: p.url, width: p.width, height: p.height });
